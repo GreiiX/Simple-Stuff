@@ -1,0 +1,46 @@
+[gd_scene format=3 uid="uid://2mboxhxkoeje"]
+
+[ext_resource type="PackedScene" uid="uid://dplupseefaywl" path="res://jugador.tscn" id="1_6ba58"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_g4v7s"]
+albedo_color = Color(0.32941177, 0.5058824, 0.21960784, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_g4v7s"]
+material = SubResource("StandardMaterial3D_g4v7s")
+size = Vector3(100, 1, 100)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_yf5fn"]
+size = Vector3(100, 1, 100)
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_57qmd"]
+
+[sub_resource type="Sky" id="Sky_yf5fn"]
+sky_material = SubResource("ProceduralSkyMaterial_57qmd")
+
+[sub_resource type="Environment" id="Environment_g4v7s"]
+background_mode = 2
+sky = SubResource("Sky_yf5fn")
+ambient_light_source = 3
+
+[node name="Mundo" type="Node3D" unique_id=1241146317]
+
+[node name="Suelo" type="StaticBody3D" parent="." unique_id=2128678375]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Suelo" unique_id=147308170]
+mesh = SubResource("BoxMesh_g4v7s")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Suelo" unique_id=2053838364]
+shape = SubResource("BoxShape3D_yf5fn")
+
+[node name="Jugador" parent="." unique_id=382421441 instance=ExtResource("1_6ba58")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1149131590]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=554205415]
+environment = SubResource("Environment_g4v7s")
+
+[node name="Colina 1" type="CSGSphere3D" parent="." unique_id=1786063997]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 15, -3, 10)
+use_collision = true
+radius = 10.0
