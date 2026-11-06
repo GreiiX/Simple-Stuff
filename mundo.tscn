@@ -1,46 +1,373 @@
 [gd_scene format=3 uid="uid://2mboxhxkoeje"]
 
 [ext_resource type="PackedScene" uid="uid://dplupseefaywl" path="res://jugador.tscn" id="1_6ba58"]
+[ext_resource type="PackedScene" uid="uid://dowdrp7sd1wy6" path="res://mundo_islas.glb" id="2_lgngo"]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_g4v7s"]
-albedo_color = Color(0.32941177, 0.5058824, 0.21960784, 1)
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_lgngo"]
+sky_top_color = Color(0.32, 0.64, 0.78, 1)
+sky_horizon_color = Color(0.82, 0.93, 0.93, 1)
+ground_bottom_color = Color(0.22, 0.47, 0.55, 1)
+ground_horizon_color = Color(0.72, 0.88, 0.89, 1)
+sun_angle_max = 18.0
+sun_curve = 0.12
 
-[sub_resource type="BoxMesh" id="BoxMesh_g4v7s"]
-material = SubResource("StandardMaterial3D_g4v7s")
-size = Vector3(100, 1, 100)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_yf5fn"]
-size = Vector3(100, 1, 100)
-
-[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_57qmd"]
-
-[sub_resource type="Sky" id="Sky_yf5fn"]
-sky_material = SubResource("ProceduralSkyMaterial_57qmd")
+[sub_resource type="Sky" id="Sky_fw4w5"]
+sky_material = SubResource("ProceduralSkyMaterial_lgngo")
 
 [sub_resource type="Environment" id="Environment_g4v7s"]
 background_mode = 2
-sky = SubResource("Sky_yf5fn")
+sky = SubResource("Sky_fw4w5")
 ambient_light_source = 3
+ambient_light_energy = 1.25
+tonemap_mode = 3
+tonemap_white = 1.6
+ssr_enabled = true
+ssr_max_steps = 48
+ssr_fade_in = 0.2
+ssao_enabled = true
+ssao_radius = 2.0
+ssao_intensity = 1.1
+glow_enabled = true
+glow_intensity = 0.14
+glow_bloom = 0.08
+fog_enabled = true
+fog_light_color = Color(0.68, 0.86, 0.9, 1)
+fog_density = 0.00035
+fog_aerial_perspective = 0.15
+fog_sky_affect = 0.08
+adjustment_enabled = true
+adjustment_contrast = 1.04
+adjustment_saturation = 1.26
+
+[sub_resource type="Shader" id="Shader_otwa2"]
+code = "
+	shader_type spatial;
+	render_mode blend_mix, depth_draw_opaque, cull_disabled, diffuse_burley, specular_schlick_ggx;
+	uniform vec4 color_hondo : source_color = vec4(0.055,0.26,0.34,1.0);
+	uniform vec4 color_somero : source_color = vec4(0.30,0.64,0.66,1.0);
+	uniform vec4 color_espuma : source_color = vec4(0.97,0.97,0.91,1.0);
+	uniform float velocidad = 0.30;
+	uniform float escala = 0.05;
+	uniform float altura_ola = 0.0;
+	uniform float transparencia = 1.0;
+	uniform float metalico = 0.12;
+	uniform float deriva = 0.0;
+	varying vec3 mundo;
+	float onda(vec2 p, float t){
+		float a = sin(p.x*1.7 + t*1.1)*cos(p.y*1.3 - t*0.8);
+		float b = sin((p.x+p.y)*2.3 - t*1.7)*0.5;
+		float c = sin(p.y*3.1 + t*2.3)*0.25;
+		return (a+b+c)/1.75;
+	}
+	void vertex(){
+		mundo = (MODEL_MATRIX*vec4(VERTEX,1.0)).xyz;
+		if (altura_ola > 0.001) { VERTEX.y += onda(mundo.xz*escala, TIME*velocidad)*altura_ola; }
+	}
+	void fragment(){
+		float t = TIME*velocidad;
+		vec2 p = mundo.xz*escala + vec2(0.0, -TIME*deriva);
+		float e = 0.35;
+		float h = onda(p,t);
+		float hx = onda(p+vec2(e,0.0),t);
+		float hy = onda(p+vec2(0.0,e),t);
+		vec3 n = normalize(vec3(-(hx-h)*2.4, 1.0, -(hy-h)*2.4));
+		NORMAL = normalize((VIEW_MATRIX*vec4(n,0.0)).xyz);
+		vec3 col = mix(color_hondo.rgb, color_somero.rgb, clamp(h*0.5+0.5,0.0,1.0));
+		float cresta = smoothstep(0.70,0.95,h);
+		col = mix(col, color_espuma.rgb, cresta*0.7);
+		ALBEDO = col; ROUGHNESS = 0.05+cresta*0.3; METALLIC = metalico;
+		SPECULAR = 0.7; ALPHA = transparencia;
+	}
+	"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_0crsg"]
+render_priority = 0
+shader = SubResource("Shader_otwa2")
+shader_parameter/color_hondo = Color(0.05, 0.25, 0.33, 1)
+shader_parameter/color_somero = Color(0.24, 0.58, 0.62, 1)
+shader_parameter/color_espuma = Color(0.97, 0.97, 0.91, 1)
+shader_parameter/velocidad = 0.2
+shader_parameter/escala = 0.01
+shader_parameter/altura_ola = 0.0
+shader_parameter/transparencia = 1.0
+shader_parameter/metalico = 0.1
+shader_parameter/deriva = 0.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_jbcfv"]
+resource_name = "MatAgua"
+cull_mode = 2
+albedo_color = Color(0.12156864, 0.6392157, 0.65882355, 1)
+roughness = 0.1
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_jbcfv"]
+_surfaces = [{
+"aabb": AABB(-8000, 0, -8000, 16000, 1e-05, 16000),
+"format": 34896613377,
+"index_count": 6,
+"index_data": PackedByteArray(0, 0, 1, 0, 2, 0, 0, 0, 3, 0, 1, 0),
+"name": "MatAgua",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 4,
+"vertex_data": PackedByteArray(0, 0, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 0, 0, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}]
+blend_shape_mode = 0
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_gd6cn"]
+resource_name = "mundo_islas_Plane_004"
+_surfaces = [{
+"aabb": AABB(-8000, 0, -8000, 16000, 1e-05, 16000),
+"format": 34896613377,
+"index_count": 6,
+"index_data": PackedByteArray(0, 0, 1, 0, 2, 0, 0, 0, 3, 0, 1, 0),
+"name": "MatAgua",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 4,
+"vertex_data": PackedByteArray(0, 0, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 0, 0, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}]
+blend_shape_mode = 0
+shadow_mesh = SubResource("ArrayMesh_jbcfv")
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_utp35"]
+resource_name = "mundo_islas_Plane_004"
+_surfaces = [{
+"aabb": AABB(-8000, 0, -8000, 16000, 1e-05, 16000),
+"attribute_data": PackedByteArray(0, 0, 255, 255, 255, 255, 0, 0, 255, 255, 255, 255, 0, 0, 0, 0),
+"format": 34896613399,
+"index_count": 6,
+"index_data": PackedByteArray(0, 0, 1, 0, 2, 0, 0, 0, 3, 0, 1, 0),
+"material": SubResource("StandardMaterial3D_jbcfv"),
+"name": "MatAgua",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 4,
+"vertex_data": PackedByteArray(0, 0, 0, 0, 255, 255, 255, 191, 255, 255, 0, 0, 0, 0, 255, 191, 255, 255, 0, 0, 255, 255, 255, 191, 0, 0, 0, 0, 0, 0, 255, 191, 255, 255, 255, 127, 255, 255, 255, 127, 255, 255, 255, 127, 255, 255, 255, 127)
+}]
+blend_shape_mode = 0
+shadow_mesh = SubResource("ArrayMesh_gd6cn")
+
+[sub_resource type="Shader" id="Shader_fw4w5"]
+code = "
+	shader_type spatial;
+	render_mode blend_mix, depth_draw_opaque, cull_disabled, diffuse_burley, specular_schlick_ggx;
+	uniform vec4 color_hondo  : source_color = vec4(0.055,0.26,0.34,1.0);
+	uniform vec4 color_somero : source_color = vec4(0.30,0.64,0.66,1.0);
+	uniform vec4 color_espuma : source_color = vec4(0.97,0.97,0.91,1.0);
+	uniform float velocidad = 0.30;
+	uniform float escala = 0.05;
+	uniform float altura_ola = 0.0;
+	uniform float transparencia = 1.0;
+	uniform float metalico = 0.12;
+	uniform float deriva = 0.0;
+	varying vec3 mundo;
+	float onda(vec2 p, float t){
+		float a = sin(p.x*1.7 + t*1.1)*cos(p.y*1.3 - t*0.8);
+		float b = sin((p.x+p.y)*2.3 - t*1.7)*0.5;
+		float c = sin(p.y*3.1 + t*2.3)*0.25;
+		return (a+b+c)/1.75;
+	}
+	void vertex(){
+		mundo = (MODEL_MATRIX*vec4(VERTEX,1.0)).xyz;
+		if (altura_ola > 0.001) { VERTEX.y += onda(mundo.xz*escala, TIME*velocidad)*altura_ola; }
+	}
+	void fragment(){
+		float t = TIME*velocidad;
+		vec2 p = mundo.xz*escala + vec2(0.0, -TIME*deriva);
+		float e = 0.35;
+		float h = onda(p,t);
+		float hx = onda(p+vec2(e,0.0),t);
+		float hy = onda(p+vec2(0.0,e),t);
+		vec3 n = normalize(vec3(-(hx-h)*2.4, 1.0, -(hy-h)*2.4));
+		NORMAL = normalize((VIEW_MATRIX*vec4(n,0.0)).xyz);
+		float mezcla = clamp(h*0.5+0.5, 0.0, 1.0);
+		vec3 col = mix(color_hondo.rgb, color_somero.rgb, mezcla);
+		float cresta = smoothstep(0.70,0.95,h);
+		col = mix(col, color_espuma.rgb, cresta*0.7);
+		ALBEDO = col;
+		ROUGHNESS = 0.05 + cresta*0.3;
+		METALLIC = metalico;
+		SPECULAR = 0.7;
+		ALPHA = transparencia;
+	}
+	"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_pfhxm"]
+render_priority = 0
+shader = SubResource("Shader_fw4w5")
+shader_parameter/color_hondo = Color(0.05, 0.25, 0.33, 1)
+shader_parameter/color_somero = Color(0.24, 0.58, 0.62, 1)
+shader_parameter/color_espuma = Color(0.97, 0.97, 0.91, 1)
+shader_parameter/velocidad = 0.2
+shader_parameter/escala = 0.01
+shader_parameter/altura_ola = 0.0
+shader_parameter/transparencia = 1.0
+shader_parameter/metalico = 0.1
+shader_parameter/deriva = 0.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_urg4q"]
+resource_name = "MatAgua"
+cull_mode = 2
+albedo_color = Color(0.12156864, 0.6392157, 0.65882355, 1)
+roughness = 0.1
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_j2eq6"]
+_surfaces = [{
+"aabb": AABB(-8000, 0, -8000, 16000, 1e-05, 16000),
+"format": 34896613377,
+"index_count": 6,
+"index_data": PackedByteArray(0, 0, 1, 0, 2, 0, 0, 0, 3, 0, 1, 0),
+"name": "MatAgua",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 4,
+"vertex_data": PackedByteArray(0, 0, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 0, 0, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}]
+blend_shape_mode = 0
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_0hui5"]
+resource_name = "mundo_islas_Plane_004"
+_surfaces = [{
+"aabb": AABB(-8000, 0, -8000, 16000, 1e-05, 16000),
+"attribute_data": PackedByteArray(0, 0, 255, 255, 255, 255, 0, 0, 255, 255, 255, 255, 0, 0, 0, 0),
+"format": 34896613399,
+"index_count": 6,
+"index_data": PackedByteArray(0, 0, 1, 0, 2, 0, 0, 0, 3, 0, 1, 0),
+"material": SubResource("StandardMaterial3D_urg4q"),
+"name": "MatAgua",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 4,
+"vertex_data": PackedByteArray(0, 0, 0, 0, 255, 255, 255, 191, 255, 255, 0, 0, 0, 0, 255, 191, 255, 255, 0, 0, 255, 255, 255, 191, 0, 0, 0, 0, 0, 0, 255, 191, 255, 255, 255, 127, 255, 255, 255, 127, 255, 255, 255, 127, 255, 255, 255, 127)
+}]
+blend_shape_mode = 0
+shadow_mesh = SubResource("ArrayMesh_j2eq6")
+
+[sub_resource type="Shader" id="Shader_lgngo"]
+code = "
+	shader_type spatial;
+	render_mode blend_mix, depth_draw_opaque, cull_disabled, diffuse_burley, specular_schlick_ggx;
+	uniform vec4 color_hondo  : source_color = vec4(0.055,0.26,0.34,1.0);
+	uniform vec4 color_somero : source_color = vec4(0.30,0.64,0.66,1.0);
+	uniform vec4 color_espuma : source_color = vec4(0.97,0.97,0.91,1.0);
+	uniform float velocidad = 0.30;
+	uniform float escala = 0.05;
+	uniform float altura_ola = 0.0;
+	uniform float transparencia = 1.0;
+	uniform float metalico = 0.12;
+	varying vec3 mundo;
+	float onda(vec2 p, float t){
+		float a = sin(p.x*1.7 + t*1.1)*cos(p.y*1.3 - t*0.8);
+		float b = sin((p.x+p.y)*2.3 - t*1.7)*0.5;
+		float c = sin(p.y*3.1 + t*2.3)*0.25;
+		return (a+b+c)/1.75;
+	}
+	void vertex(){
+		mundo = (MODEL_MATRIX*vec4(VERTEX,1.0)).xyz;
+		if (altura_ola > 0.001) { VERTEX.y += onda(mundo.xz*escala, TIME*velocidad)*altura_ola; }
+	}
+	void fragment(){
+		float t = TIME*velocidad;
+		vec2 p = mundo.xz*escala;
+		float e = 0.35;
+		float h = onda(p,t);
+		float hx = onda(p+vec2(e,0.0),t);
+		float hy = onda(p+vec2(0.0,e),t);
+		vec3 n = normalize(vec3(-(hx-h)*2.4, 1.0, -(hy-h)*2.4));
+		NORMAL = normalize((VIEW_MATRIX*vec4(n,0.0)).xyz);
+		float mezcla = clamp(h*0.5+0.5, 0.0, 1.0);
+		vec3 col = mix(color_hondo.rgb, color_somero.rgb, mezcla);
+		float cresta = smoothstep(0.74,0.96,h);
+		col = mix(col, color_espuma.rgb, cresta*0.65);
+		ALBEDO = col;
+		ROUGHNESS = 0.05 + cresta*0.3;
+		METALLIC = metalico;
+		SPECULAR = 0.7;
+		ALPHA = transparencia;
+	}
+	"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_aou4a"]
+render_priority = 0
+shader = SubResource("Shader_lgngo")
+shader_parameter/color_hondo = Color(0.05, 0.25, 0.33, 1)
+shader_parameter/color_somero = Color(0.24, 0.58, 0.62, 1)
+shader_parameter/color_espuma = Color(0.97, 0.97, 0.91, 1)
+shader_parameter/velocidad = 0.2
+shader_parameter/escala = 0.01
+shader_parameter/altura_ola = 0.0
+shader_parameter/transparencia = 1.0
+shader_parameter/metalico = 0.1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_g6c3j"]
+resource_name = "MatAgua"
+cull_mode = 2
+albedo_color = Color(0.12156864, 0.6392157, 0.65882355, 1)
+roughness = 0.1
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_nrbi7"]
+_surfaces = [{
+"aabb": AABB(-8000, 0, -8000, 16000, 1e-05, 16000),
+"format": 34896613377,
+"index_count": 6,
+"index_data": PackedByteArray(0, 0, 1, 0, 2, 0, 0, 0, 3, 0, 1, 0),
+"name": "MatAgua",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 4,
+"vertex_data": PackedByteArray(0, 0, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 0, 0, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}]
+blend_shape_mode = 0
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_urg4q"]
+resource_name = "mundo_islas_Plane_004"
+_surfaces = [{
+"aabb": AABB(-8000, 0, -8000, 16000, 1e-05, 16000),
+"attribute_data": PackedByteArray(0, 0, 255, 255, 255, 255, 0, 0, 255, 255, 255, 255, 0, 0, 0, 0),
+"format": 34896613399,
+"index_count": 6,
+"index_data": PackedByteArray(0, 0, 1, 0, 2, 0, 0, 0, 3, 0, 1, 0),
+"material": SubResource("StandardMaterial3D_g6c3j"),
+"name": "MatAgua",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 4,
+"vertex_data": PackedByteArray(0, 0, 0, 0, 255, 255, 255, 191, 255, 255, 0, 0, 0, 0, 255, 191, 255, 255, 0, 0, 255, 255, 255, 191, 0, 0, 0, 0, 0, 0, 255, 191, 255, 255, 255, 127, 255, 255, 255, 127, 255, 255, 255, 127, 255, 255, 255, 127)
+}]
+blend_shape_mode = 0
+shadow_mesh = SubResource("ArrayMesh_nrbi7")
 
 [node name="Mundo" type="Node3D" unique_id=1241146317]
 
-[node name="Suelo" type="StaticBody3D" parent="." unique_id=2128678375]
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Suelo" unique_id=147308170]
-mesh = SubResource("BoxMesh_g4v7s")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Suelo" unique_id=2053838364]
-shape = SubResource("BoxShape3D_yf5fn")
-
 [node name="Jugador" parent="." unique_id=382421441 instance=ExtResource("1_6ba58")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -36.77, 174.35, -36.77)
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1149131590]
+transform = Transform3D(0.7880108, 0.48514786, -0.37903908, 0, 0.6156615, 0.7880107, 0.6156615, -0.62096095, 0.4851479, 0, 0, 0)
+light_color = Color(1, 0.96, 0.88, 1)
+light_energy = 1.45
+light_angular_distance = 1.2
+shadow_enabled = true
+directional_shadow_max_distance = 420.0
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=554205415]
 environment = SubResource("Environment_g4v7s")
 
-[node name="Colina 1" type="CSGSphere3D" parent="." unique_id=1786063997]
-transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 15, -3, 10)
-use_collision = true
-radius = 10.0
+[node name="Islas" parent="." unique_id=1169173583 instance=ExtResource("2_lgngo")]
+
+[node name="Oceano2" type="MeshInstance3D" parent="Islas" unique_id=217305754]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 935.00574, 0, -175.98042)
+material_override = SubResource("ShaderMaterial_0crsg")
+mesh = SubResource("ArrayMesh_utp35")
+
+[node name="Oceano3" type="MeshInstance3D" parent="Islas" unique_id=172803077]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 935.00574, 0, -175.98042)
+material_override = SubResource("ShaderMaterial_pfhxm")
+mesh = SubResource("ArrayMesh_0hui5")
+
+[node name="Oceano4" type="MeshInstance3D" parent="Islas" unique_id=1203430692]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 935.00574, 0, -175.98042)
+material_override = SubResource("ShaderMaterial_aou4a")
+mesh = SubResource("ArrayMesh_urg4q")
+
+[editable path="Islas"]

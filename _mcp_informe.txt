@@ -1,0 +1,4 @@
+viewmodel: tenia 2 mallas, borradas 1
+tercera persona: tenia 2 mallas, borradas 1
+mallas AK fuera de sitio: ninguna
+guardado: OK
